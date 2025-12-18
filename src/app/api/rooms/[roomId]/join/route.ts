@@ -18,11 +18,11 @@ export async function POST(
   }
 
   try {
-    const { participant, room, token } = await roomsStore.joinRoom(roomId, name);
+    const { participant, room } = await roomsStore.joinRoom(roomId, name);
     return NextResponse.json({
       room,
       participant: { id: participant.id, name: participant.name },
-      token,
+      token: participant.token,
     });
   } catch (error) {
     const message =
