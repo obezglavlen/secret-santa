@@ -22,6 +22,9 @@ export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roomId = searchParams.get("room");
+  const goHome = useCallback(() => {
+    router.replace("/");
+  }, [router]);
 
   const [room, setRoom] = useState<Room | null>(null);
   const [selfInfo, setSelfInfo] = useState<SelfInfo | null>(null);
@@ -223,7 +226,7 @@ export default function Home() {
           participant: { ...participant, isOwner: true },
         });
         setRoom(createdRoom);
-        router.replace(`/?room=${createdRoom.id}`);
+        router.push(`/?room=${createdRoom.id}`);
       } catch (error) {
         const message =
           error instanceof Error
@@ -333,6 +336,18 @@ export default function Home() {
   return (
     <div className="min-h-screen px-4 py-10 text-white">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
+        <header className="flex items-center justify-between rounded-2xl bg-white/5 px-6 py-4 text-white backdrop-blur">
+          <button
+            type="button"
+            onClick={goHome}
+            className="text-lg font-black uppercase tracking-[0.3em] text-amber-200 transition hover:text-white"
+          >
+            Secret Santa
+          </button>
+          <span className="text-xs uppercase tracking-[0.4em] text-white/60">
+            Тайный обмен
+          </span>
+        </header>
         <HeroPanel />
 
         {!roomId && (
@@ -355,7 +370,7 @@ export default function Home() {
                 {roomError}.{" "}
                 <button
                   className="underline text-amber-200"
-                  onClick={() => router.replace("/")}
+                  onClick={() => router.push("/")}
                 >
                   Вернуться назад
                 </button>
