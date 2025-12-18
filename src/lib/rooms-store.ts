@@ -88,6 +88,29 @@ class RoomsStore {
     return { participant, room: this.#toPublicRoom(room), token };
   }
 
+  removeParticipant(roomId: string, ownerToken: string, participantId: string) {
+    const room = this.#rooms.get(roomId);
+    if (!room) throw new Error("Комната не найдена");
+    if (room.ownerToken !== ownerToken) throw new Error("Нет прав для удаления");
+    if (room.startedAt) throw new Error("Жеребьевка уже началась");
+
+    const index = room.participants.findIndex((p) => p.id === participantId);
+    if (index === -1) throw new Error("Участник не найден");
+
+    const participant = room.participants[index];
+    if (participant.token === room.ownerToken) {
+      throw new Error("Нельзя удалить организатора");
+    }
+
+    room.participants.splice(index, 1);
+
+    return room.participants.map((p) => ({
+      id: p.id,
+      name: p.name,
+      joinedAt: p.joinedAt,
+    }));
+  }
+
   startRoom(roomId: string, token: string) {
     const room = this.#rooms.get(roomId);
     if (!room) throw new Error("Комната не найдена");

@@ -38,6 +38,7 @@ export default function Home() {
   const [pendingAction, setPendingAction] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -136,6 +137,40 @@ export default function Home() {
       }
     },
     [],
+  );
+
+  const handleKick = useCallback(
+    async (participantId: string) => {
+      if (!roomId || !token || !selfInfo?.participant.isOwner) return;
+
+      setActionError(null);
+      setRemovingId(participantId);
+
+      try {
+        const response = await fetch(
+          `/api/rooms/${roomId}/participants/${participantId}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          },
+        );
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Не удалось удалить участника");
+        }
+        setParticipants(payload.participants);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось удалить участника";
+        setActionError(message);
+      } finally {
+        setRemovingId(null);
+      }
+    },
+    [roomId, token, selfInfo?.participant.isOwner],
   );
 
   useEffect(() => {
@@ -349,6 +384,9 @@ export default function Home() {
                   <ParticipantsList
                     participants={participants}
                     highlightId={selfInfo?.participant.id ?? null}
+                    showKickButton={Boolean(selfInfo?.participant.isOwner)}
+                    onKick={selfInfo?.participant.isOwner ? handleKick : undefined}
+                    busyId={removingId}
                   />
                   <JoinPanel
                     youAreInRoom={youAreInRoom}
