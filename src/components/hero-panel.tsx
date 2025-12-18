@@ -1,13 +1,21 @@
 export default function HeroPanel() {
   return (
-    <div className="rounded-2xl border border-black/5 bg-white/80 p-8 shadow-lg shadow-zinc-200 backdrop-blur dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-black/30">
-      <p className="text-sm uppercase tracking-[0.2em] text-red-500">Тайный Санта</p>
-      <h1 className="mt-4 text-4xl font-semibold text-zinc-900 dark:text-white">
-        Создайте комнату, позовите друзей и проведите жеребьевку в один клик
-      </h1>
-      <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
-        Участники заходят по ссылке, вводят имя, а вы запускаете старт. Каждый увидит только своего получателя подарка.
+    <div className="festive-card relative overflow-hidden bg-gradient-to-br from-red-600/90 via-rose-500/80 to-indigo-700/80 p-10 text-white">
+      <div className="absolute inset-0 opacity-60 blur-3xl" />
+      <p className="text-xs uppercase tracking-[0.4em] text-amber-100">
+        Тайный Санта
       </p>
+      <h1 className="mt-4 text-4xl font-black leading-tight">
+        Новый год начинается с добрых подарков
+      </h1>
+      <p className="mt-4 text-lg text-white/80">
+        Создавайте комнаты, делитесь ссылками и запускайте жеребьевку — каждый увидит лишь своего получателя.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3 text-sm text-amber-100">
+        <span className="rounded-full bg-white/20 px-4 py-1">Без повторов</span>
+        <span className="rounded-full bg-white/20 px-4 py-1">Никто не дарит себе</span>
+        <span className="rounded-full bg-white/20 px-4 py-1">Сейчас или позже</span>
+      </div>
     </div>
   );
 }

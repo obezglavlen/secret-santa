@@ -20,28 +20,29 @@ export default function CreateRoomForm({
   onSubmit,
 }: Props) {
   return (
-    <section className="rounded-2xl border border-red-100 bg-white/90 p-8 shadow-lg shadow-red-100 dark:border-white/10 dark:bg-zinc-900/90 dark:shadow-black/40">
-      <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white">
-        Создать новую комнату
-      </h2>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        После создания вы получите ссылку и сможете поделиться ей с друзьями.
-      </p>
+    <section className="festive-card snow-fade px-8 py-10">
+      <div className="flex flex-col gap-2">
+        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Новая комната</p>
+        <h2 className="text-3xl font-semibold text-white">Запустите праздник</h2>
+        <p className="text-sm text-white/70">
+          Введите имя организатора и название комнаты, чтобы получить ссылку.
+        </p>
+      </div>
       <form className="mt-6 flex flex-col gap-4" onSubmit={onSubmit}>
-        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+        <label className="text-sm text-white/70">
           Ваше имя
           <input
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
+            className="mt-1 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-base text-white outline-none transition focus:border-emerald-400"
             placeholder="Например, Катя"
             value={hostName}
             onChange={(event) => onHostChange(event.target.value)}
             required
           />
         </label>
-        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+        <label className="text-sm text-white/70">
           Название комнаты (необязательно)
           <input
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
+            className="mt-1 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-base text-white outline-none transition focus:border-emerald-400"
             placeholder="Семейный круг 2024"
             value={roomName}
             onChange={(event) => onRoomChange(event.target.value)}
@@ -50,11 +51,11 @@ export default function CreateRoomForm({
         <button
           type="submit"
           disabled={creating}
-          className="mt-2 rounded-xl bg-red-500 px-6 py-3 text-lg font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
+          className="mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-rose-500 px-6 py-3 text-lg font-semibold text-zinc-900 transition hover:brightness-110 disabled:opacity-60"
         >
           {creating ? "Создание..." : "Создать комнату"}
         </button>
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-rose-200">{error}</p>}
       </form>
     </section>
   );

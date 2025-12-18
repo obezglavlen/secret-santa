@@ -296,7 +296,7 @@ export default function Home() {
   const assignmentName = selfInfo?.assignedTo?.name;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50 via-white to-white px-4 py-10 text-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-900">
+    <div className="min-h-screen px-4 py-10 text-white">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
         <HeroPanel />
 
@@ -313,13 +313,13 @@ export default function Home() {
         )}
 
         {roomId && (
-          <section className="rounded-2xl border border-zinc-100 bg-white/90 p-8 shadow-xl shadow-zinc-100 dark:border-white/10 dark:bg-zinc-900/90 dark:shadow-black/40">
-            {roomLoading && <p>Загружаем комнату...</p>}
+          <section className="festive-card snow-fade border-0 px-8 py-10">
+            {roomLoading && <p className="text-sm text-white/70">Загружаем комнату...</p>}
             {roomError && (
-              <p className="text-red-500">
+              <p className="text-rose-200">
                 {roomError}.{" "}
                 <button
-                  className="underline"
+                  className="underline text-amber-200"
                   onClick={() => router.replace("/")}
                 >
                   Вернуться назад
@@ -330,13 +330,11 @@ export default function Home() {
             {!roomLoading && !roomError && room && (
               <div className="flex flex-col gap-8">
                 <header className="flex flex-col gap-2">
-                  <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
+                  <p className="text-sm uppercase tracking-[0.3em] text-amber-200">
                     Комната #{room.id}
                   </p>
-                  <h2 className="text-3xl font-semibold text-zinc-900 dark:text-white">
-                    {room.name}
-                  </h2>
-                  <div className="flex flex-col gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  <h2 className="text-3xl font-semibold text-white">{room.name}</h2>
+                  <div className="flex flex-col gap-2 text-sm text-white/70">
                     <p>Участников: {participants.length}</p>
                     <p>
                       Статус:{" "}
@@ -380,10 +378,10 @@ export default function Home() {
                 />
 
                 {actionError && (
-                  <p className="text-sm text-red-500">{actionError}</p>
+                  <p className="text-sm text-rose-200">{actionError}</p>
                 )}
                 {infoMessage && (
-                  <p className="text-sm text-green-600">{infoMessage}</p>
+                  <p className="text-sm text-emerald-200">{infoMessage}</p>
                 )}
               </div>
             )}

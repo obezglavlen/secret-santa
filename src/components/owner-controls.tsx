@@ -14,21 +14,28 @@ export default function OwnerControls({
   onStart,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-700">
-      <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Управление</h3>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Когда все участники добавлены, запустите жеребьевку.
+    <div className="festive-card px-6 py-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-white">Управляйте праздником</h3>
+        <span className="text-xs uppercase tracking-[0.3em] text-emerald-200">
+          {participantsCount} участников
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-white/70">
+        Когда все друзья подключены — нажмите старт для тайного обмена подарками.
       </p>
       <button
         type="button"
         onClick={onStart}
         disabled={!canStart || pending}
-        className="mt-4 w-full rounded-xl bg-green-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-green-300"
+        className="mt-4 w-full rounded-2xl bg-gradient-to-r from-lime-400 via-emerald-500 to-cyan-500 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:brightness-110 disabled:opacity-60"
       >
-        {started ? "Жеребьевка завершена" : "Запустить старт"}
+        {started ? "Жеребьевка активна" : "Запустить жеребьевку"}
       </button>
       {participantsCount < 2 && (
-        <p className="mt-2 text-xs text-zinc-500">Нужно минимум два участника.</p>
+        <p className="mt-2 text-xs text-amber-200">
+          Добавьте хотя бы ещё одного участника.
+        </p>
       )}
     </div>
   );

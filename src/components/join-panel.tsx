@@ -20,15 +20,15 @@ export default function JoinPanel({
   isOwner,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-700">
-      <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-        {youAreInRoom ? "Вы в игре" : "Войдите чтобы участвовать"}
+    <div className="festive-card px-6 py-5">
+      <h3 className="text-lg font-semibold text-white">
+        {youAreInRoom ? "Вы в круге" : "Присоединиться"}
       </h3>
 
       {!youAreInRoom && (
         <form className="mt-4 flex flex-col gap-3" onSubmit={onJoin}>
           <input
-            className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
+            className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-300"
             placeholder="Ваше имя"
             value={joinName}
             onChange={(event) => onNameChange(event.target.value)}
@@ -37,19 +37,19 @@ export default function JoinPanel({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
+            className="rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:brightness-110 disabled:opacity-60"
           >
-            {pending ? "Входим..." : "Присоединиться"}
+            {pending ? "Готовим волшебство..." : "Войти в комнату"}
           </button>
         </form>
       )}
 
       {youAreInRoom && (
-        <div className="mt-4 space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-          <p>Вы участвуете под именем {participantName}.</p>
+        <div className="mt-4 space-y-2 text-sm text-white/80">
+          <p>Вы в игре как {participantName}.</p>
           {isOwner && (
-            <p className="text-red-500">
-              Вы создатель комнаты и можете начинать жеребьевку.
+            <p className="text-amber-200">
+              Вы организатор, можете нажать «Старт» когда всё готово.
             </p>
           )}
         </div>

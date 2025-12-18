@@ -5,18 +5,18 @@ type Props = {
 
 export default function InviteLink({ shareLink, onCopy }: Props) {
   return (
-    <div className="rounded-2xl border border-dashed border-zinc-200 p-4 dark:border-zinc-700">
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">Ссылка для приглашения</p>
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+    <div className="festive-card snow-fade border-0 px-6 py-4">
+      <p className="text-xs uppercase tracking-[0.4em] text-amber-200">Приглашение</p>
+      <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-white shadow-lg sm:flex-row">
         <input
-          className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          className="flex-1 bg-transparent text-white outline-none"
           value={shareLink}
           readOnly
         />
         <button
           type="button"
           onClick={onCopy}
-          className="rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+          className="rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:brightness-110"
         >
           Скопировать
         </button>
