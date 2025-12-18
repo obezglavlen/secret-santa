@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { roomsStore } from "@/lib/rooms-store";
+import { resolveRoomParams } from "@/lib/route-params";
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token")?.trim();
-  const { roomId } = await params;
+  const roomId = await resolveRoomParams(params);
 
   if (!token) {
     return NextResponse.json(
@@ -17,7 +18,7 @@ export async function GET(
   }
 
   try {
-    const info = roomsStore.getSelf(roomId, token);
+    const info = await roomsStore.getSelf(roomId, token);
     return NextResponse.json({ self: info });
   } catch (error) {
     const message =

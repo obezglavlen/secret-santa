@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const displayName =
     roomName || `Комната ${hostName}`.slice(0, 40) || "Новый круг";
 
-  const { room, ownerToken, participant } = roomsStore.createRoom(
+  const { room, ownerToken, participant } = await roomsStore.createRoom(
     displayName,
     hostName,
   );

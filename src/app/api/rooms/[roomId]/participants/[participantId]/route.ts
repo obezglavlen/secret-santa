@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { roomsStore } from "@/lib/rooms-store";
+import { resolveParticipantParams } from "@/lib/route-params";
 
 export async function DELETE(
   request: NextRequest,
@@ -7,7 +8,7 @@ export async function DELETE(
 ) {
   const body = await request.json().catch(() => ({}));
   const token = String(body?.token ?? "").trim();
-  const {roomId, participantId} = await params;
+  const { roomId, participantId } = await resolveParticipantParams(params);
 
   if (!token) {
     return NextResponse.json(
@@ -17,7 +18,7 @@ export async function DELETE(
   }
 
   try {
-    const participants = roomsStore.removeParticipant(
+    const participants = await roomsStore.removeParticipant(
       roomId,
       token,
       participantId,

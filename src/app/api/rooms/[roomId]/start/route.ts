@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { roomsStore } from "@/lib/rooms-store";
+import { resolveRoomParams } from "@/lib/route-params";
 
 export async function POST(
   request: NextRequest,
@@ -7,7 +8,7 @@ export async function POST(
 ) {
   const body = await request.json().catch(() => ({}));
   const token = String(body?.token ?? "").trim();
-  const {roomId} = await params;
+  const roomId = await resolveRoomParams(params);
 
   if (!token) {
     return NextResponse.json(
@@ -17,7 +18,7 @@ export async function POST(
   }
 
   try {
-    const result = roomsStore.startRoom(roomId, token);
+    const result = await roomsStore.startRoom(roomId, token);
     return NextResponse.json(result);
   } catch (error) {
     const message =

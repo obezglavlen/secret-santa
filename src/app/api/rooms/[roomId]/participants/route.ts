@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { roomsStore } from "@/lib/rooms-store";
+import { resolveRoomParams } from "@/lib/route-params";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> },
 ) {
-  const {roomId} = await params;
-  const room = roomsStore.getRoom(roomId);
-
-  if (!room) {
-    return NextResponse.json({ error: "Комната не найдена" }, { status: 404 });
+  try {
+    const roomId = await resolveRoomParams(params);
+    const participants = await roomsStore.getParticipants(roomId);
+    return NextResponse.json({ participants });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Комната не найдена";
+    return NextResponse.json({ error: message }, { status: 404 });
   }
-
-  return NextResponse.json({ participants: room.participants });
 }
