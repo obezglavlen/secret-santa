@@ -41,6 +41,8 @@ export type SelfInfo = {
   };
 };
 
+const MAX_ROOMS = 20;
+
 class RoomsStore {
   #rooms = new Map<string, Room>();
 
@@ -62,8 +64,24 @@ class RoomsStore {
     };
 
     this.#rooms.set(room.id, room);
+    this.#pruneRooms();
 
     return { room: this.#toPublicRoom(room), ownerToken, participant: hostParticipant };
+  }
+
+  #pruneRooms() {
+    while (this.#rooms.size > MAX_ROOMS) {
+      let oldestRoomId: string | null = null;
+      let oldestDate = Number.MAX_SAFE_INTEGER;
+      for (const [id, room] of this.#rooms) {
+        if (room.createdAt < oldestDate) {
+          oldestDate = room.createdAt;
+          oldestRoomId = id;
+        }
+      }
+      if (!oldestRoomId) break;
+      this.#rooms.delete(oldestRoomId);
+    }
   }
 
   getRoom(roomId: string): PublicRoom | null {
