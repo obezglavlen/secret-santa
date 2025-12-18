@@ -9,9 +9,14 @@ import InviteLink from "@/components/invite-link";
 import JoinPanel from "@/components/join-panel";
 import OwnerControls from "@/components/owner-controls";
 import ParticipantsList from "@/components/participants-list";
-import { Room, SelfInfo } from "@/types/secret-santa";
+import {
+  Participant,
+  Room,
+  SelfInfo,
+} from "@/types/secret-santa";
 
 const TOKEN_STORE_PREFIX = "secret-santa:token:";
+const ROOM_REFRESH_MS = 6000;
 
 export default function Home() {
   const router = useRouter();
@@ -22,6 +27,7 @@ export default function Home() {
   const [selfInfo, setSelfInfo] = useState<SelfInfo | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [roomLoading, setRoomLoading] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
   const [hostName, setHostName] = useState("");
   const [roomName, setRoomName] = useState("");
@@ -45,6 +51,7 @@ export default function Home() {
       setSelfInfo(null);
       setToken(null);
       setRoomError(null);
+      setParticipants([]);
       return;
     }
 
@@ -80,6 +87,8 @@ export default function Home() {
     async (id: string) => {
       setRoomLoading(true);
       setRoomError(null);
+      const scrollPosition =
+        typeof window !== "undefined" ? window.scrollY ?? 0 : 0;
       try {
         const response = await fetch(`/api/rooms/${id}`, { cache: "no-store" });
         if (!response.ok) {
@@ -87,6 +96,7 @@ export default function Home() {
         }
         const data = (await response.json()) as { room: Room };
         setRoom(data.room);
+        setParticipants(data.room.participants);
         if (token) {
           await fetchSelf(id, token);
         } else {
@@ -99,9 +109,33 @@ export default function Home() {
         setRoom(null);
       } finally {
         setRoomLoading(false);
+        if (typeof window !== "undefined") {
+          window.requestAnimationFrame(() => {
+            window.scrollTo({ top: scrollPosition });
+          });
+        }
       }
     },
     [token, fetchSelf],
+  );
+
+  const fetchParticipants = useCallback(
+    async (id: string) => {
+      try {
+        const response = await fetch(
+          `/api/rooms/${id}/participants`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) {
+          throw new Error("Не удалось обновить участников");
+        }
+        const data = (await response.json()) as { participants: Participant[] };
+        setParticipants(data.participants);
+      } catch {
+        // Игнорируем ошибки обновления
+      }
+    },
+    [],
   );
 
   useEffect(() => {
@@ -109,6 +143,13 @@ export default function Home() {
       fetchRoom(roomId);
     }
   }, [roomId, fetchRoom]);
+
+  useEffect(() => {
+    if (!roomId) return undefined;
+    fetchParticipants(roomId);
+    const interval = setInterval(() => fetchParticipants(roomId), ROOM_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [roomId, fetchParticipants]);
 
   const rememberToken = useCallback(
     (roomKey: string, nextToken: string) => {
@@ -189,6 +230,7 @@ export default function Home() {
           participant: { ...participant, isOwner: false },
         });
         setRoom(updatedRoom);
+        setParticipants(updatedRoom.participants);
         setJoinName("");
       } catch (error) {
         const message =
@@ -246,7 +288,7 @@ export default function Home() {
   const canStart =
     !!selfInfo?.participant.isOwner &&
     !!room &&
-    room.participants.length >= 2 &&
+    participants.length >= 2 &&
     !room.startedAt;
 
   const youAreInRoom = Boolean(selfInfo?.participant);
@@ -295,7 +337,7 @@ export default function Home() {
                     {room.name}
                   </h2>
                   <div className="flex flex-col gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    <p>Участников: {room.participants.length}</p>
+                    <p>Участников: {participants.length}</p>
                     <p>
                       Статус:{" "}
                       {alreadyStarted ? "жеребьевка запущена" : "ожидание старта"}
@@ -307,7 +349,7 @@ export default function Home() {
 
                 <div className="grid gap-6 lg:grid-cols-2">
                   <ParticipantsList
-                    participants={room.participants}
+                    participants={participants}
                     highlightId={selfInfo?.participant.id ?? null}
                   />
                   <JoinPanel
@@ -325,7 +367,7 @@ export default function Home() {
                   <OwnerControls
                     canStart={canStart}
                     pending={pendingAction}
-                    participantsCount={room.participants.length}
+                    participantsCount={participants.length}
                     started={Boolean(room.startedAt)}
                     onStart={handleStart}
                   />
