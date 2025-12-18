@@ -3,7 +3,7 @@ import { roomsStore } from "@/lib/rooms-store";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { roomId: string; participantId: string } },
+  { params }: { params: Promise<{ roomId: string; participantId: string }> },
 ) {
   const body = await request.json().catch(() => ({}));
   const token = String(body?.token ?? "").trim();

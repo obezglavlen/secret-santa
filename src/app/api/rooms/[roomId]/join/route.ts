@@ -3,7 +3,7 @@ import { roomsStore } from "@/lib/rooms-store";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { roomId: string } },
+  { params }: { params: Promise<{ roomId: string }> },
 ) {
   const body = await request.json().catch(() => ({}));
   const name = String(body?.name ?? "").trim();

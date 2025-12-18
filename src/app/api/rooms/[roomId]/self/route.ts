@@ -3,7 +3,7 @@ import { roomsStore } from "@/lib/rooms-store";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { roomId: string } },
+  { params }: { params: Promise<{ roomId: string }> },
 ) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token")?.trim();
