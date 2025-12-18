@@ -33,7 +33,6 @@ export default function CreateRoomForm({
           Ваше имя
           <input
             className="mt-1 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-base text-white outline-none transition focus:border-emerald-400"
-            placeholder="Например, Катя"
             value={hostName}
             onChange={(event) => onHostChange(event.target.value)}
             required
@@ -43,7 +42,6 @@ export default function CreateRoomForm({
           Название комнаты (необязательно)
           <input
             className="mt-1 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-base text-white outline-none transition focus:border-emerald-400"
-            placeholder="Семейный круг 2024"
             value={roomName}
             onChange={(event) => onRoomChange(event.target.value)}
           />
