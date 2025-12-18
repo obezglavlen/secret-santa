@@ -2,32 +2,14 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-
-type Participant = {
-  id: string;
-  name: string;
-  joinedAt: number;
-};
-
-type Room = {
-  id: string;
-  name: string;
-  createdAt: number;
-  startedAt?: number;
-  participants: Participant[];
-};
-
-type SelfInfo = {
-  participant: {
-    id: string;
-    name: string;
-    isOwner: boolean;
-  };
-  assignedTo?: {
-    id: string;
-    name: string;
-  };
-};
+import AssignmentPanel from "@/components/assignment-panel";
+import CreateRoomForm from "@/components/create-room-form";
+import HeroPanel from "@/components/hero-panel";
+import InviteLink from "@/components/invite-link";
+import JoinPanel from "@/components/join-panel";
+import OwnerControls from "@/components/owner-controls";
+import ParticipantsList from "@/components/participants-list";
+import { Room, SelfInfo } from "@/types/secret-santa";
 
 const TOKEN_STORE_PREFIX = "secret-santa:token:";
 
@@ -78,7 +60,6 @@ export default function Home() {
           `/api/rooms/${id}/self?token=${encodeURIComponent(currentToken)}`,
           { cache: "no-store" },
         );
-        console.log(response);
         if (!response.ok) {
           throw new Error();
         }
@@ -166,7 +147,7 @@ export default function Home() {
           participant: { ...participant, isOwner: true },
         });
         setRoom(createdRoom);
-        router.push(`/?room=${createdRoom.id}`);
+        router.replace(`/?room=${createdRoom.id}`);
       } catch (error) {
         const message =
           error instanceof Error
@@ -272,66 +253,21 @@ export default function Home() {
   const alreadyStarted = Boolean(room?.startedAt);
   const assignmentName = selfInfo?.assignedTo?.name;
 
-  const hero = (
-    <div className="rounded-2xl border border-black/5 bg-white/80 p-8 shadow-lg shadow-zinc-200 backdrop-blur dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-black/30">
-      <p className="text-sm uppercase tracking-[0.2em] text-red-500">
-        Тайный Санта
-      </p>
-      <h1 className="mt-4 text-4xl font-semibold text-zinc-900 dark:text-white">
-        Создайте комнату, позовите друзей и проведите жеребьевку в один клик
-      </h1>
-      <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
-        Участники заходят по ссылке, вводят имя, а вы запускаете старт.
-        Каждый увидит только своего получателя подарка.
-      </p>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-50 via-white to-white px-4 py-10 text-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-900">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
-        {hero}
+        <HeroPanel />
 
         {!roomId && (
-          <section className="rounded-2xl border border-red-100 bg-white/90 p-8 shadow-lg shadow-red-100 dark:border-white/10 dark:bg-zinc-900/90 dark:shadow-black/40">
-            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white">
-              Создать новую комнату
-            </h2>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              После создания вы получите ссылку и сможете поделиться ей с друзьями.
-            </p>
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleCreateRoom}>
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Ваше имя
-                <input
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
-                  placeholder="Например, Катя"
-                  value={hostName}
-                  onChange={(event) => setHostName(event.target.value)}
-                  required
-                />
-              </label>
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Название комнаты (необязательно)
-                <input
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
-                  placeholder="Семейный круг 2024"
-                  value={roomName}
-                  onChange={(event) => setRoomName(event.target.value)}
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={creatingRoom}
-                className="mt-2 rounded-xl bg-red-500 px-6 py-3 text-lg font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
-              >
-                {creatingRoom ? "Создание..." : "Создать комнату"}
-              </button>
-              {actionError && (
-                <p className="text-sm text-red-500">{actionError}</p>
-              )}
-            </form>
-          </section>
+          <CreateRoomForm
+            hostName={hostName}
+            roomName={roomName}
+            creating={creatingRoom}
+            error={actionError}
+            onHostChange={setHostName}
+            onRoomChange={setRoomName}
+            onSubmit={handleCreateRoom}
+          />
         )}
 
         {roomId && (
@@ -348,6 +284,7 @@ export default function Home() {
                 </button>
               </p>
             )}
+
             {!roomLoading && !roomError && room && (
               <div className="flex flex-col gap-8">
                 <header className="flex flex-col gap-2">
@@ -361,154 +298,44 @@ export default function Home() {
                     <p>Участников: {room.participants.length}</p>
                     <p>
                       Статус:{" "}
-                      {alreadyStarted
-                        ? "жеребьевка запущена"
-                        : "ожидание старта"}
+                      {alreadyStarted ? "жеребьевка запущена" : "ожидание старта"}
                     </p>
                   </div>
                 </header>
 
-                <div className="rounded-2xl border border-dashed border-zinc-200 p-4 dark:border-zinc-700">
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Ссылка для приглашения
-                  </p>
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                    <input
-                      className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                      value={shareLink}
-                      readOnly
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className="rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-                    >
-                      Скопировать
-                    </button>
-                  </div>
-                </div>
+                <InviteLink shareLink={shareLink} onCopy={handleCopyLink} />
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-700">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                      Список участников
-                    </h3>
-                    <ul className="mt-3 flex flex-col gap-2 text-sm text-zinc-600 dark:text-zinc-300">
-                      {room.participants.map((participant) => (
-                        <li
-                          key={participant.id}
-                          className={`rounded-lg border border-transparent px-3 py-2 ${
-                            participant.id === selfInfo?.participant?.id
-                              ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200"
-                              : "bg-zinc-50 dark:bg-zinc-800"
-                          }`}
-                        >
-                          {participant.name}
-                          {participant.id === selfInfo?.participant?.id && (
-                            <span className="ml-2 text-xs uppercase tracking-wider text-red-500">
-                              это вы
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-700">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                      {youAreInRoom
-                        ? "Вы в игре"
-                        : "Войдите чтобы участвовать"}
-                    </h3>
-
-                    {!youAreInRoom && (
-                      <form
-                        className="mt-4 flex flex-col gap-3"
-                        onSubmit={handleJoinRoom}
-                      >
-                        <input
-                          className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none focus:border-red-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-red-400"
-                          placeholder="Ваше имя"
-                          value={joinName}
-                          onChange={(event) => setJoinName(event.target.value)}
-                          required
-                        />
-                        <button
-                          type="submit"
-                          disabled={pendingAction}
-                          className="rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
-                        >
-                          {pendingAction ? "Входим..." : "Присоединиться"}
-                        </button>
-                      </form>
-                    )}
-
-                    {youAreInRoom && (
-                      <div className="mt-4 space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-                        <p>Вы участвуете под именем {selfInfo?.participant.name}.</p>
-                        {selfInfo?.participant.isOwner && (
-                          <p className="text-red-500">
-                            Вы создатель комнаты и можете начинать жеребьевку.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <ParticipantsList
+                    participants={room.participants}
+                    highlightId={selfInfo?.participant.id ?? null}
+                  />
+                  <JoinPanel
+                    youAreInRoom={youAreInRoom}
+                    participantName={selfInfo?.participant.name}
+                    pending={pendingAction}
+                    onJoin={handleJoinRoom}
+                    onNameChange={setJoinName}
+                    joinName={joinName}
+                    isOwner={selfInfo?.participant.isOwner}
+                  />
                 </div>
 
-                <>{console.log(selfInfo)}</>
                 {selfInfo?.participant.isOwner && (
-                  <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-700">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                      Управление
-                    </h3>
-                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                      Когда все участники добавлены, запустите жеребьевку.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleStart}
-                      disabled={!canStart || pendingAction}
-                      className="mt-4 w-full rounded-xl bg-green-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-green-300"
-                    >
-                      {room.startedAt ? "Жеребьевка завершена" : "Запустить старт"}
-                    </button>
-                    {room.participants.length < 2 && (
-                      <p className="mt-2 text-xs text-zinc-500">
-                        Нужно минимум два участника.
-                      </p>
-                    )}
-                  </div>
+                  <OwnerControls
+                    canStart={canStart}
+                    pending={pendingAction}
+                    participantsCount={room.participants.length}
+                    started={Boolean(room.startedAt)}
+                    onStart={handleStart}
+                  />
                 )}
 
-                {youAreInRoom && (
-                  <div className="rounded-2xl border border-red-100 bg-red-50/70 p-6 text-center dark:border-red-500/40 dark:bg-red-500/10">
-                    <p className="text-sm uppercase tracking-[0.4em] text-red-500">
-                      Ваш получатель
-                    </p>
-                    {!alreadyStarted && (
-                      <p className="mt-3 text-lg text-red-700 dark:text-red-200">
-                        Ждем, когда организатор нажмет «Старт».
-                      </p>
-                    )}
-                    {alreadyStarted && assignmentName && (
-                      <>
-                        <p className="mt-4 text-sm text-red-400">Дарите подарок</p>
-                        <p className="text-3xl font-semibold text-red-600 dark:text-red-200">
-                          {assignmentName}
-                        </p>
-                        <p className="mt-2 text-sm text-red-500 dark:text-red-200/90">
-                          Никто больше не увидит этого имени, кроме вас.
-                        </p>
-                      </>
-                    )}
-                    {alreadyStarted && !assignmentName && (
-                      <p className="mt-4 text-lg text-red-700 dark:text-red-200">
-                        Мы не нашли вашу запись. Попробуйте перезагрузить страницу.
-                      </p>
-                    )}
-                  </div>
-                )}
+                <AssignmentPanel
+                  youAreInRoom={youAreInRoom}
+                  alreadyStarted={alreadyStarted}
+                  assignmentName={assignmentName}
+                />
 
                 {actionError && (
                   <p className="text-sm text-red-500">{actionError}</p>
