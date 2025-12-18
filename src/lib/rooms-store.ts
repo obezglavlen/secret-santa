@@ -1,6 +1,6 @@
-import { Collection } from "mongodb";
+import mongoose, { Document, Model } from "mongoose";
 import { randomUUID } from "crypto";
-import { getMongoClient } from "@/lib/mongodb";
+import { initMongoose } from "@/lib/mongoose";
 
 type ParticipantDoc = {
   id: string;
@@ -18,6 +18,31 @@ type RoomDoc = {
   startedAt?: number;
   assignments?: Record<string, string>;
 };
+
+type RoomDocument = Document<unknown, unknown, RoomDoc> & RoomDoc;
+
+const participantSchema = new mongoose.Schema<ParticipantDoc>(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    joinedAt: { type: Number, required: true },
+    token: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const roomSchema = new mongoose.Schema<RoomDocument>({
+  _id: { type: String, required: true },
+  name: { type: String, required: true },
+  createdAt: { type: Number, required: true },
+  ownerToken: { type: String, required: true },
+  participants: { type: [participantSchema], default: [], required: true },
+  startedAt: { type: Number },
+  assignments: { type: Map, of: String },
+});
+
+const RoomModel: Model<RoomDocument> =
+  mongoose.models.Room ?? mongoose.model<RoomDocument>("Room", roomSchema);
 
 export type PublicRoom = {
   id: string;
@@ -44,15 +69,11 @@ export type SelfInfo = {
 };
 
 class RoomsStore {
-  #collectionPromise: Promise<Collection<RoomDoc>>;
-
-  constructor() {
-    this.#collectionPromise = this.#prepareCollection();
-  }
+  #ready = initMongoose();
 
   async createRoom(roomName: string, hostName: string) {
-    const collection = await this.#collectionPromise;
-    const id = await this.#generateRoomId(collection);
+    await this.#ready;
+    const id = await this.#generateRoomId();
     const ownerToken = randomUUID();
     const hostParticipant: ParticipantDoc = {
       id: randomUUID(),
@@ -67,8 +88,7 @@ class RoomsStore {
       ownerToken,
       participants: [hostParticipant],
     };
-
-    await collection.insertOne(roomDoc);
+    await RoomModel.create(roomDoc);
 
     return {
       room: this.#toPublicRoom(roomDoc),
@@ -78,15 +98,15 @@ class RoomsStore {
   }
 
   async getRoom(roomId: string) {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
+    await this.#ready;
+    const room = await RoomModel.findById(roomId).lean();
     if (!room) return null;
     return this.#toPublicRoom(room);
   }
 
   async joinRoom(roomId: string, participantName: string) {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
+    await this.#ready;
+    const room = await RoomModel.findById(roomId);
     if (!room) throw new Error("Комната не найдена");
     if (room.startedAt) throw new Error("Жеребьевка уже началась");
 
@@ -96,21 +116,41 @@ class RoomsStore {
       joinedAt: Date.now(),
       token: randomUUID(),
     };
+    room.participants.push(participant);
+    await room.save();
 
-    await collection.updateOne(
-      { _id: roomId },
-      { $push: { participants: participant } },
-    );
+    return {
+      room: this.#toPublicRoom(room.toObject()),
+      participant,
+    };
+  }
 
-    const updatedRoom = await collection.findOne({ _id: roomId });
-    if (!updatedRoom) throw new Error("Комната не найдена после обновления");
+  async removeParticipant(roomId: string, ownerToken: string, participantId: string) {
+    await this.#ready;
+    const room = await RoomModel.findById(roomId);
+    if (!room) throw new Error("Комната не найдена");
+    if (room.ownerToken !== ownerToken) throw new Error("Нет прав для удаления");
+    if (room.startedAt) throw new Error("Жеребьевка уже началась");
 
-    return { room: this.#toPublicRoom(updatedRoom), participant };
+    const entry = room.participants.find((p) => p.id === participantId);
+    if (!entry) throw new Error("Участник не найден");
+    if (entry.token === room.ownerToken) {
+      throw new Error("Нельзя удалить организатора");
+    }
+
+    room.participants = room.participants.filter((p) => p.id !== participantId);
+    await room.save();
+
+    return room.participants.map((participant) => ({
+      id: participant.id,
+      name: participant.name,
+      joinedAt: participant.joinedAt,
+    }));
   }
 
   async startRoom(roomId: string, token: string) {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
+    await this.#ready;
+    const room = await RoomModel.findById(roomId);
     if (!room) throw new Error("Комната не найдена");
     if (room.ownerToken !== token) throw new Error("Нет прав для запуска жеребьевки");
     if (room.participants.length < 2) {
@@ -118,21 +158,19 @@ class RoomsStore {
     }
 
     const assignments = this.#buildAssignments(room.participants);
-    const startedAt = Date.now();
-    await collection.updateOne(
-      { _id: roomId },
-      { $set: { assignments, startedAt } },
-    );
+    room.assignments = assignments;
+    room.startedAt = Date.now();
+    await room.save();
 
     return {
-      startedAt,
+      startedAt: room.startedAt,
       assignmentsCount: Object.keys(assignments).length,
     };
   }
 
-  async getSelf(roomId: string, token: string): Promise<SelfInfo> {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
+  async getSelf(roomId: string, token: string) {
+    await this.#ready;
+    const room = await RoomModel.findById(roomId).lean();
     if (!room) throw new Error("Комната не найдена");
 
     const participant = room.participants.find((p) => p.token === token);
@@ -155,55 +193,27 @@ class RoomsStore {
     };
   }
 
-  async removeParticipant(roomId: string, ownerToken: string, participantId: string) {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
+  async getParticipants(roomId: string) {
+    await this.#ready;
+    const room = await RoomModel.findById(roomId).lean();
     if (!room) throw new Error("Комната не найдена");
-    if (room.ownerToken !== ownerToken) throw new Error("Нет прав для удаления");
-    if (room.startedAt) throw new Error("Жеребьевка уже началась");
-
-    const target = room.participants.find((p) => p.id === participantId);
-    if (!target) throw new Error("Участник не найден");
-    if (target.token === room.ownerToken) {
-      throw new Error("Нельзя удалить организатора");
-    }
-
-    await collection.updateOne(
-      { _id: roomId },
-      { $pull: { participants: { id: participantId } } },
-    );
-
-    const updatedRoom = await collection.findOne({ _id: roomId });
-    if (!updatedRoom) throw new Error("Комната не найдена после удаления");
-
-    return updatedRoom.participants.map((participant) => ({
+    return room.participants.map((participant) => ({
       id: participant.id,
       name: participant.name,
       joinedAt: participant.joinedAt,
     }));
   }
 
-  async getParticipants(roomId: string) {
-    const collection = await this.#collectionPromise;
-    const room = await collection.findOne({ _id: roomId });
-    if (!room) throw new Error("Комната не найдена");
-    return room.participants.map((p) => ({
-      id: p.id,
-      name: p.name,
-      joinedAt: p.joinedAt,
-    }));
+  async #generateRoomId() {
+    for (let i = 0; i < 10; i += 1) {
+      const id = Math.random().toString(36).slice(2, 8);
+      const exists = await RoomModel.exists({ _id: id });
+      if (!exists) return id;
+    }
+    return randomUUID();
   }
 
-  async #prepareCollection() {
-    const client = await getMongoClient();
-    const collection = client.db().collection<RoomDoc>("rooms");
-    await collection.createIndex({ createdAt: 1 });
-    await collection.createIndex({ ownerToken: 1 });
-    await collection.createIndex({ "participants.token": 1 });
-    return collection;
-  }
-
-  #toPublicRoom(room: RoomDoc): PublicRoom {
+  #toPublicRoom(room: RoomDoc) {
     return {
       id: room._id,
       name: room.name,
@@ -217,34 +227,19 @@ class RoomsStore {
     };
   }
 
-  async #generateRoomId(collection: Collection<RoomDoc>) {
-    for (let i = 0; i < 10; i += 1) {
-      const id = Math.random().toString(36).slice(2, 8);
-      const exists = await collection.findOne({ _id: id });
-      if (!exists) {
-        return id;
-      }
-    }
-    // очень маловероятно, но если повторяется, печатаем UUID
-    return randomUUID();
-  }
-
-  #buildAssignments(participants: ParticipantDoc[]): Record<string, string> {
+  #buildAssignments(participants: ParticipantDoc[]) {
     const ids = participants.map((p) => p.id);
     const receivers = [...ids];
-
     for (let i = receivers.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
     }
-
     for (let i = 0; i < ids.length; i += 1) {
       if (ids[i] === receivers[i]) {
         const swapWith = (i + 1) % ids.length;
         [receivers[i], receivers[swapWith]] = [receivers[swapWith], receivers[i]];
       }
     }
-
     const assignments: Record<string, string> = {};
     ids.forEach((id, index) => {
       assignments[id] = receivers[index];
