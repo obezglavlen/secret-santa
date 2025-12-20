@@ -8,6 +8,7 @@ type Props = {
   onNameChange: (value: string) => void;
   joinName: string;
   isOwner?: boolean;
+  roomStarted?: boolean;
 };
 
 export default function JoinPanel({
@@ -18,6 +19,7 @@ export default function JoinPanel({
   onNameChange,
   joinName,
   isOwner,
+  roomStarted,
 }: Props) {
   return (
     <div className="festive-card px-6 py-5">
@@ -25,7 +27,7 @@ export default function JoinPanel({
         {youAreInRoom ? "Вы в круге" : "Присоединиться"}
       </h3>
 
-      {!youAreInRoom && (
+      {!youAreInRoom && !roomStarted && (
         <form className="mt-4 flex flex-col gap-3" onSubmit={onJoin}>
           <input
             className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-300"
@@ -42,6 +44,12 @@ export default function JoinPanel({
             {pending ? "Готовим волшебство..." : "Войти в комнату"}
           </button>
         </form>
+      )}
+
+      {!youAreInRoom && roomStarted && (
+        <p className="mt-4 text-sm text-amber-200">
+          Жеребьевка уже началась — вход закрыт.
+        </p>
       )}
 
       {youAreInRoom && (

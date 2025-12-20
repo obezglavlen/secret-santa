@@ -255,6 +255,10 @@ export default function Home() {
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!roomId || pendingAction) return;
+      if (room?.startedAt) {
+        setActionError("Жеребьевка уже началась — вход закрыт");
+        return;
+      }
 
       setPendingAction(true);
       setActionError(null);
@@ -289,7 +293,7 @@ export default function Home() {
         setPendingAction(false);
       }
     },
-    [joinName, pendingAction, rememberToken, roomId],
+    [joinName, pendingAction, rememberToken, roomId, room?.startedAt],
   );
 
   const handleStart = useCallback(async () => {
@@ -475,6 +479,7 @@ export default function Home() {
                       onNameChange={setJoinName}
                       joinName={joinName}
                       isOwner={selfInfo?.participant.isOwner}
+                      roomStarted={alreadyStarted}
                     />
                     {youAreInRoom && (
                       <WishlistPanel
