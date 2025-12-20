@@ -4,7 +4,7 @@ import { resolveRoomParams } from "@/lib/route-params";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ roomId: string }> },
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   const body = await request.json().catch(() => ({}));
   const name = String(body?.name ?? "").trim();
@@ -13,7 +13,7 @@ export async function POST(
   if (!name) {
     return NextResponse.json(
       { error: "Введите имя перед входом" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -21,7 +21,11 @@ export async function POST(
     const { participant, room } = await roomsStore.joinRoom(roomId, name);
     return NextResponse.json({
       room,
-      participant: { id: participant.id, name: participant.name },
+      participant: {
+        id: participant.id,
+        name: participant.name,
+        wishlist: participant.wishlist,
+      },
       token: participant.token,
     });
   } catch (error) {

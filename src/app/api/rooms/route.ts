@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   if (!hostName) {
     return NextResponse.json(
       { error: "Нужно указать имя организатора" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -18,12 +18,16 @@ export async function POST(request: NextRequest) {
 
   const { room, ownerToken, participant } = await roomsStore.createRoom(
     displayName,
-    hostName,
+    hostName
   );
 
   return NextResponse.json({
     room,
     token: ownerToken,
-    participant: { id: participant.id, name: participant.name },
+    participant: {
+      id: participant.id,
+      name: participant.name,
+      wishlist: participant.wishlist,
+    },
   });
 }

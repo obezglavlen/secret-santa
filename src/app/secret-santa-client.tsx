@@ -9,6 +9,7 @@ import InviteLink from "@/components/invite-link";
 import JoinPanel from "@/components/join-panel";
 import OwnerControls from "@/components/owner-controls";
 import ParticipantsList from "@/components/participants-list";
+import WishlistPanel from "@/components/wishlist-panel"
 import {
   Participant,
   Room,
@@ -42,6 +43,8 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [wishlistDraft, setWishlistDraft] = useState("");
+  const [wishlistSaving, setWishlistSaving] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -189,6 +192,14 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [roomId, fetchParticipants]);
 
+  useEffect(() => {
+    if (!selfInfo?.participant) {
+      setWishlistDraft("");
+      return;
+    }
+    setWishlistDraft(selfInfo.participant.wishlist.join("\n"));
+  }, [selfInfo?.participant]);
+
   const rememberToken = useCallback(
     (roomKey: string, nextToken: string) => {
       if (typeof window === "undefined") return;
@@ -307,6 +318,58 @@ export default function Home() {
     }
   }, [fetchRoom, pendingAction, roomId, token]);
 
+  const handleWishlistSave = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!roomId || !token) return;
+
+      setWishlistSaving(true);
+      setActionError(null);
+
+      const nextWishlist = wishlistDraft
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      try {
+        const response = await fetch(`/api/rooms/${roomId}/wishlist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, wishlist: nextWishlist }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Не удалось сохранить вишлист");
+        }
+
+        const updatedWishlist = Array.isArray(payload?.wishlist)
+          ? payload.wishlist
+          : nextWishlist;
+
+        setSelfInfo((prev) =>
+          prev
+            ? {
+                ...prev,
+                participant: {
+                  ...prev.participant,
+                  wishlist: updatedWishlist,
+                },
+              }
+            : prev,
+        );
+        setInfoMessage("Вишлист сохранён");
+        setTimeout(() => setInfoMessage(null), 3000);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Не удалось сохранить вишлист";
+        setActionError(message);
+      } finally {
+        setWishlistSaving(false);
+      }
+    },
+    [roomId, token, wishlistDraft],
+  );
+
   const shareLink = useMemo(() => {
     if (!origin || !roomId) return "";
     return `${origin}/?room=${roomId}`;
@@ -403,15 +466,26 @@ export default function Home() {
                     onKick={selfInfo?.participant.isOwner ? handleKick : undefined}
                     busyId={removingId}
                   />
-                  <JoinPanel
-                    youAreInRoom={youAreInRoom}
-                    participantName={selfInfo?.participant.name}
-                    pending={pendingAction}
-                    onJoin={handleJoinRoom}
-                    onNameChange={setJoinName}
-                    joinName={joinName}
-                    isOwner={selfInfo?.participant.isOwner}
-                  />
+                  <div className="flex flex-col gap-6">
+                    <JoinPanel
+                      youAreInRoom={youAreInRoom}
+                      participantName={selfInfo?.participant.name}
+                      pending={pendingAction}
+                      onJoin={handleJoinRoom}
+                      onNameChange={setJoinName}
+                      joinName={joinName}
+                      isOwner={selfInfo?.participant.isOwner}
+                    />
+                    {youAreInRoom && (
+                      <WishlistPanel
+                        draft={wishlistDraft}
+                        onDraftChange={setWishlistDraft}
+                        onSave={handleWishlistSave}
+                        saving={wishlistSaving}
+                        savedCount={selfInfo?.participant.wishlist.length ?? 0}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {selfInfo?.participant.isOwner && (
@@ -428,6 +502,7 @@ export default function Home() {
                   youAreInRoom={youAreInRoom}
                   alreadyStarted={alreadyStarted}
                   assignmentName={assignmentName}
+                  assignedWishlist={selfInfo?.assignedTo?.wishlist}
                 />
 
                 {actionError && (

@@ -7,6 +7,7 @@ type ParticipantDoc = {
   name: string;
   joinedAt: number;
   token: string;
+  wishlist: string[];
 };
 
 type RoomDoc = {
@@ -27,8 +28,9 @@ const participantSchema = new mongoose.Schema<ParticipantDoc>(
     name: { type: String, required: true },
     joinedAt: { type: Number, required: true },
     token: { type: String, required: true },
+    wishlist: { type: [String], default: [] },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const roomSchema = new mongoose.Schema<RoomDocument>({
@@ -61,10 +63,12 @@ export type SelfInfo = {
     id: string;
     name: string;
     isOwner: boolean;
+    wishlist: string[];
   };
   assignedTo?: {
     id: string;
     name: string;
+    wishlist: string[];
   };
 };
 
@@ -80,6 +84,7 @@ class RoomsStore {
       name: hostName,
       joinedAt: Date.now(),
       token: ownerToken,
+      wishlist: [],
     };
     const roomDoc: RoomDoc = {
       _id: id,
@@ -115,6 +120,7 @@ class RoomsStore {
       name: participantName,
       joinedAt: Date.now(),
       token: randomUUID(),
+      wishlist: [],
     };
     room.participants.push(participant);
     await room.save();
@@ -125,11 +131,16 @@ class RoomsStore {
     };
   }
 
-  async removeParticipant(roomId: string, ownerToken: string, participantId: string) {
+  async removeParticipant(
+    roomId: string,
+    ownerToken: string,
+    participantId: string
+  ) {
     await this.#ready;
     const room = await RoomModel.findById(roomId);
     if (!room) throw new Error("Комната не найдена");
-    if (room.ownerToken !== ownerToken) throw new Error("Нет прав для удаления");
+    if (room.ownerToken !== ownerToken)
+      throw new Error("Нет прав для удаления");
     if (room.startedAt) throw new Error("Жеребьевка уже началась");
 
     const entry = room.participants.find((p) => p.id === participantId);
@@ -152,7 +163,8 @@ class RoomsStore {
     await this.#ready;
     const room = await RoomModel.findById(roomId);
     if (!room) throw new Error("Комната не найдена");
-    if (room.ownerToken !== token) throw new Error("Нет прав для запуска жеребьевки");
+    if (room.ownerToken !== token)
+      throw new Error("Нет прав для запуска жеребьевки");
     if (room.participants.length < 2) {
       throw new Error("Нужно минимум два участника");
     }
@@ -166,6 +178,20 @@ class RoomsStore {
       startedAt: room.startedAt,
       assignmentsCount: Object.keys(assignments).length,
     };
+  }
+
+  async updateWishlist(roomId: string, token: string, wishlist: string[]) {
+    await this.#ready;
+    const room = await RoomModel.findById(roomId);
+    if (!room) throw new Error("Комната не найдена");
+
+    const participant = room.participants.find((p) => p.token === token);
+    if (!participant) throw new Error("Участник не найден");
+
+    participant.wishlist = wishlist;
+    await room.save();
+
+    return participant.wishlist;
   }
 
   async getSelf(roomId: string, token: string) {
@@ -186,9 +212,14 @@ class RoomsStore {
         id: participant.id,
         name: participant.name,
         isOwner: participant.token === room.ownerToken,
+        wishlist: participant.wishlist ?? [],
       },
       assignedTo: assignedTo
-        ? { id: assignedTo.id, name: assignedTo.name }
+        ? {
+            id: assignedTo.id,
+            name: assignedTo.name,
+            wishlist: assignedTo.wishlist ?? [],
+          }
         : undefined,
     };
   }
@@ -237,7 +268,10 @@ class RoomsStore {
     for (let i = 0; i < ids.length; i += 1) {
       if (ids[i] === receivers[i]) {
         const swapWith = (i + 1) % ids.length;
-        [receivers[i], receivers[swapWith]] = [receivers[swapWith], receivers[i]];
+        [receivers[i], receivers[swapWith]] = [
+          receivers[swapWith],
+          receivers[i],
+        ];
       }
     }
     const assignments: Record<string, string> = {};

@@ -17,9 +17,11 @@ export type SelfInfo = {
     id: string;
     name: string;
     isOwner: boolean;
+    wishlist: string[];
   };
   assignedTo?: {
     id: string;
     name: string;
+    wishlist: string[];
   };
 };

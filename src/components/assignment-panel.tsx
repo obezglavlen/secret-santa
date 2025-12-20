@@ -2,12 +2,14 @@ type Props = {
   youAreInRoom: boolean;
   alreadyStarted: boolean;
   assignmentName?: string;
+  assignedWishlist?: string[];
 };
 
 export default function AssignmentPanel({
   youAreInRoom,
   alreadyStarted,
   assignmentName,
+  assignedWishlist,
 }: Props) {
   if (!youAreInRoom) {
     return null;
@@ -28,6 +30,27 @@ export default function AssignmentPanel({
           <p className="mt-2 text-sm text-white/70">
             Это секрет — только вы видите имя.
           </p>
+          <div className="mt-6 text-left">
+            <p className="text-xs uppercase tracking-[0.3em] text-amber-200">
+              Пожелания получателя
+            </p>
+            {assignedWishlist && assignedWishlist.length > 0 ? (
+              <ul className="mt-2 space-y-2 text-sm text-white/80">
+                {assignedWishlist.map((wish, index) => (
+                  <li
+                    key={`${wish}-${index}`}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2"
+                  >
+                    {wish}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-white/60">
+                Получатель ещё не записал пожеланий.
+              </p>
+            )}
+          </div>
         </>
       )}
       {alreadyStarted && !assignmentName && (
