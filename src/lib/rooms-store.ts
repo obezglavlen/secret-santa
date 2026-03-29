@@ -1,13 +1,14 @@
 import mongoose, { Document, Model } from "mongoose";
 import { randomUUID } from "crypto";
 import { initMongoose } from "@/lib/mongoose";
+import type { WishlistItem } from "@/types/secret-santa";
 
 type ParticipantDoc = {
   id: string;
   name: string;
   joinedAt: number;
   token: string;
-  wishlist: string[];
+  wishlist: Array<WishlistItem | string>;
 };
 
 type RoomDoc = {
@@ -28,7 +29,7 @@ const participantSchema = new mongoose.Schema<ParticipantDoc>(
     name: { type: String, required: true },
     joinedAt: { type: Number, required: true },
     token: { type: String, required: true },
-    wishlist: { type: [String], default: [] },
+    wishlist: { type: [mongoose.Schema.Types.Mixed], default: [] },
   },
   { _id: false }
 );
@@ -56,20 +57,6 @@ export type PublicRoom = {
     name: string;
     joinedAt: number;
   }>;
-};
-
-export type SelfInfo = {
-  participant: {
-    id: string;
-    name: string;
-    isOwner: boolean;
-    wishlist: string[];
-  };
-  assignedTo?: {
-    id: string;
-    name: string;
-    wishlist: string[];
-  };
 };
 
 class RoomsStore {
@@ -180,7 +167,7 @@ class RoomsStore {
     };
   }
 
-  async updateWishlist(roomId: string, token: string, wishlist: string[]) {
+  async updateWishlist(roomId: string, token: string, wishlist: WishlistItem[]) {
     await this.#ready;
     const room = await RoomModel.findById(roomId);
     if (!room) throw new Error("Комната не найдена");
@@ -188,10 +175,10 @@ class RoomsStore {
     const participant = room.participants.find((p) => p.token === token);
     if (!participant) throw new Error("Участник не найден");
 
-    participant.wishlist = wishlist;
+    participant.wishlist = this.#normalizeWishlist(wishlist);
     await room.save();
 
-    return participant.wishlist;
+    return this.#normalizeWishlist(participant.wishlist);
   }
 
   async getSelf(roomId: string, token: string) {
@@ -212,13 +199,13 @@ class RoomsStore {
         id: participant.id,
         name: participant.name,
         isOwner: participant.token === room.ownerToken,
-        wishlist: participant.wishlist ?? [],
+        wishlist: this.#normalizeWishlist(participant.wishlist),
       },
       assignedTo: assignedTo
         ? {
             id: assignedTo.id,
             name: assignedTo.name,
-            wishlist: assignedTo.wishlist ?? [],
+            wishlist: this.#normalizeWishlist(assignedTo.wishlist),
           }
         : undefined,
     };
@@ -279,6 +266,50 @@ class RoomsStore {
       assignments[id] = receivers[index];
     });
     return assignments;
+  }
+
+  #normalizeWishlist(wishlist: Array<WishlistItem | string> | undefined | null) {
+    if (!Array.isArray(wishlist)) {
+      return [];
+    }
+
+    return wishlist.flatMap((item) => {
+      if (typeof item === "string") {
+        const text = item.trim();
+        return text
+          ? [
+              {
+                id: randomUUID(),
+                text,
+                description: "",
+              },
+            ]
+          : [];
+      }
+
+      if (!item || typeof item !== "object") {
+        return [];
+      }
+
+      const text = String(
+        (item as { text?: unknown; title?: unknown }).text ??
+          (item as { title?: unknown }).title ??
+          "",
+      ).trim();
+      const description = String(item.description ?? "").trim();
+
+      if (!text) {
+        return [];
+      }
+
+      return [
+        {
+          id: String(item.id ?? "").trim() || randomUUID(),
+          text,
+          description,
+        },
+      ];
+    });
   }
 }
 

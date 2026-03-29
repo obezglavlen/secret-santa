@@ -1,8 +1,10 @@
+import type { WishlistItem } from "@/types/secret-santa";
+
 type Props = {
   youAreInRoom: boolean;
   alreadyStarted: boolean;
   assignmentName?: string;
-  assignedWishlist?: string[];
+  assignedWishlist?: WishlistItem[];
 };
 
 export default function AssignmentPanel({
@@ -35,16 +37,21 @@ export default function AssignmentPanel({
               Пожелания получателя
             </p>
             {assignedWishlist && assignedWishlist.length > 0 ? (
-              <ul className="mt-2 space-y-2 text-sm text-white/80">
-                {assignedWishlist.map((wish, index) => (
-                  <li
-                    key={`${wish}-${index}`}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2"
+              <div className="mt-3 space-y-3 text-sm text-white/80">
+                {assignedWishlist.map((wish) => (
+                  <div
+                    key={wish.id}
+                    className="rounded-3xl border border-white/10 bg-white/5 px-4 py-4"
                   >
-                    {wish}
-                  </li>
+                    <p className="font-semibold text-white">{wish.text}</p>
+                    {wish.description ? (
+                      <p className="mt-2 leading-6 text-white/70">{wish.description}</p>
+                    ) : (
+                      <p className="mt-2 text-white/45">Описание не указано</p>
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
               <p className="mt-2 text-sm text-white/60">
                 Получатель ещё не записал пожеланий.

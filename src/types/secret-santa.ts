@@ -1,3 +1,9 @@
+export type WishlistItem = {
+  id: string;
+  text: string;
+  description: string;
+};
+
 export type Participant = {
   id: string;
   name: string;
@@ -17,11 +23,11 @@ export type SelfInfo = {
     id: string;
     name: string;
     isOwner: boolean;
-    wishlist: string[];
+    wishlist: WishlistItem[];
   };
   assignedTo?: {
     id: string;
     name: string;
-    wishlist: string[];
+    wishlist: WishlistItem[];
   };
 };

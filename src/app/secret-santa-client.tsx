@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AssignmentPanel from "@/components/assignment-panel";
 import CreateRoomForm from "@/components/create-room-form";
@@ -9,11 +16,12 @@ import InviteLink from "@/components/invite-link";
 import JoinPanel from "@/components/join-panel";
 import OwnerControls from "@/components/owner-controls";
 import ParticipantsList from "@/components/participants-list";
-import WishlistPanel from "@/components/wishlist-panel"
+import WishlistPanel from "@/components/wishlist-panel";
 import {
   Participant,
   Room,
   SelfInfo,
+  WishlistItem,
 } from "@/types/secret-santa";
 
 const TOKEN_STORE_PREFIX = "secret-santa:token:";
@@ -43,8 +51,10 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [wishlistDraft, setWishlistDraft] = useState("");
+  const [wishlistTextDraft, setWishlistTextDraft] = useState("");
+  const [wishlistDescriptionDraft, setWishlistDescriptionDraft] = useState("");
   const [wishlistSaving, setWishlistSaving] = useState(false);
+  const latestWishlistRequestRef = useRef(0);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -193,11 +203,12 @@ export default function Home() {
   }, [roomId, fetchParticipants]);
 
   useEffect(() => {
-    if (!selfInfo?.participant) {
-      setWishlistDraft("");
+    if (selfInfo?.participant) {
       return;
     }
-    setWishlistDraft(selfInfo.participant.wishlist.join("\n"));
+
+    setWishlistTextDraft("");
+    setWishlistDescriptionDraft("");
   }, [selfInfo?.participant]);
 
   const rememberToken = useCallback(
@@ -322,18 +333,27 @@ export default function Home() {
     }
   }, [fetchRoom, pendingAction, roomId, token]);
 
-  const handleWishlistSave = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const saveWishlist = useCallback(
+    async (nextWishlist: WishlistItem[], previousWishlist: WishlistItem[]) => {
       if (!roomId || !token) return;
+
+      const requestId = latestWishlistRequestRef.current + 1;
+      latestWishlistRequestRef.current = requestId;
 
       setWishlistSaving(true);
       setActionError(null);
-
-      const nextWishlist = wishlistDraft
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
+      setInfoMessage(null);
+      setSelfInfo((prev) =>
+        prev
+          ? {
+              ...prev,
+              participant: {
+                ...prev.participant,
+                wishlist: nextWishlist,
+              },
+            }
+          : prev,
+      );
 
       try {
         const response = await fetch(`/api/rooms/${roomId}/wishlist`, {
@@ -346,32 +366,104 @@ export default function Home() {
           throw new Error(payload?.error ?? "Не удалось сохранить вишлист");
         }
 
-        const updatedWishlist = Array.isArray(payload?.wishlist)
-          ? payload.wishlist
-          : nextWishlist;
+        const updatedWishlist = Array.isArray(payload?.ownerWishlist)
+          ? (payload.ownerWishlist as WishlistItem[])
+          : Array.isArray(payload?.wishlist)
+            ? (payload.wishlist as WishlistItem[])
+            : nextWishlist;
 
-        setSelfInfo((prev) =>
-          prev
-            ? {
-                ...prev,
-                participant: {
-                  ...prev.participant,
-                  wishlist: updatedWishlist,
-                },
-              }
-            : prev,
-        );
-        setInfoMessage("Вишлист сохранён");
-        setTimeout(() => setInfoMessage(null), 3000);
+        if (requestId === latestWishlistRequestRef.current) {
+          setSelfInfo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  participant: {
+                    ...prev.participant,
+                    wishlist: updatedWishlist,
+                  },
+                }
+              : prev,
+          );
+        }
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Не удалось сохранить вишлист";
-        setActionError(message);
+        if (requestId === latestWishlistRequestRef.current) {
+          setSelfInfo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  participant: {
+                    ...prev.participant,
+                    wishlist: previousWishlist,
+                  },
+                }
+              : prev,
+          );
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Не удалось сохранить вишлист";
+          setActionError(message);
+        }
       } finally {
-        setWishlistSaving(false);
+        if (requestId === latestWishlistRequestRef.current) {
+          setWishlistSaving(false);
+        }
       }
     },
-    [roomId, token, wishlistDraft],
+    [roomId, token],
+  );
+
+  const handleWishlistAdd = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const text = wishlistTextDraft.trim();
+      const description = wishlistDescriptionDraft.trim();
+      const previousWishlist = selfInfo?.participant.wishlist ?? [];
+
+      if (!text || !roomId || !token) {
+        return;
+      }
+
+      const nextWishlist: WishlistItem[] = [
+        ...previousWishlist,
+        {
+          id: globalThis.crypto.randomUUID(),
+          text,
+          description,
+        },
+      ];
+
+      setWishlistTextDraft("");
+      setWishlistDescriptionDraft("");
+      await saveWishlist(nextWishlist, previousWishlist);
+    },
+    [
+      roomId,
+      saveWishlist,
+      selfInfo?.participant.wishlist,
+      token,
+      wishlistDescriptionDraft,
+      wishlistTextDraft,
+    ],
+  );
+
+  const handleWishlistRemove = useCallback(
+    async (itemId: string) => {
+      if (!roomId || !token || !selfInfo?.participant.wishlist || wishlistSaving) {
+        return;
+      }
+
+      const previousWishlist = selfInfo.participant.wishlist;
+      const nextWishlist = previousWishlist.filter((item) => item.id !== itemId);
+
+      if (nextWishlist.length === previousWishlist.length) {
+        return;
+      }
+
+      await saveWishlist(nextWishlist, previousWishlist);
+    },
+    [roomId, saveWishlist, selfInfo?.participant.wishlist, token, wishlistSaving],
   );
 
   const shareLink = useMemo(() => {
@@ -483,11 +575,14 @@ export default function Home() {
                     />
                     {youAreInRoom && (
                       <WishlistPanel
-                        draft={wishlistDraft}
-                        onDraftChange={setWishlistDraft}
-                        onSave={handleWishlistSave}
+                        textDraft={wishlistTextDraft}
+                        descriptionDraft={wishlistDescriptionDraft}
+                        items={selfInfo?.participant.wishlist ?? []}
+                        onTextChange={setWishlistTextDraft}
+                        onDescriptionChange={setWishlistDescriptionDraft}
+                        onAddItem={handleWishlistAdd}
+                        onRemoveItem={handleWishlistRemove}
                         saving={wishlistSaving}
-                        savedCount={selfInfo?.participant.wishlist.length ?? 0}
                       />
                     )}
                   </div>
